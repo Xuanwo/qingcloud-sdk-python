@@ -1,0 +1,38 @@
+%YAML 1.2
+---
+qingcloud:
+  iaas:
+    config:
+      host: api.qingcloud.com
+      port: 443
+      protocol: https
+      url: "/iaas/"
+    api:
+      describe_zones:
+        action: DescribeZones
+        required_params: []
+        params: []
+      describe_jobs:
+        action: DescribeJobs
+        required_params: []
+        params:
+          - {param: jobs, type: list}
+          - {param: status, type: list}
+          - {param: job_action, type: list}
+          - {param: offset, type: int}
+          - {param: limit, type: int}
+      describe_images:
+        action: DescribeImages
+        required_params: []
+        params:
+          - {param: images, type: list}
+          - {param: os_family, type: str}
+          - {param: processor_type, type: str}
+          - {param: status, type: list}
+          - {param: visibility, type: str}
+          - {param: provider, type: str}
+          - {param: verbose, type: int, default: 0}
+          - {param: search_word, type: str}
+          - {param: owner, type: str}
+          - {param: offset, type: int}
+          - {param: limit, type: int}

@@ -23,6 +23,7 @@ from qingcloud.iaas.errors import InvalidParameterError
 from qingcloud.iaas.router_static import RouterStaticFactory
 from qingcloud.misc.utils import parse_ts
 
+
 class RequestChecker(object):
 
     def err_occur(self, error_msg):
@@ -198,3 +199,32 @@ class RequestChecker(object):
             self.check_lb_backend_port(backend['port'])
             if 'weight' in backend:
                 self.check_lb_backend_weight(backend['weight'])
+
+    def check_yaml_api_params(self, directive, required_params, params):
+        """ Check parameters in directive
+        @param directive: the directive to check, should be `dict` type.
+        @param required_params: a list of parameter that should be in directive.
+        @param params: a list of params, such as [{param: status, type: list}]
+        """
+        if not isinstance(directive, dict):
+            self.err_occur('[%s] should be dict type' % directive)
+            return False
+
+        if required_params:
+            self.check_required_params(directive, required_params)
+
+        if params:
+            for param in params:
+                param_name = param['param']
+                param_type = param['type']
+                if param_name in directive:
+                    if param_type == 'int':
+                        self.check_integer_params(directive, [param_name])
+                    elif param_type == 'list':
+                        self.check_list_params(directive, [param_name])
+                    elif param_type == 'datetime':
+                        self.check_datetime_params(directive, [param_name])
+                else:
+                    if 'default' in param:
+                        directive[param_name] = param['default']
+        return True

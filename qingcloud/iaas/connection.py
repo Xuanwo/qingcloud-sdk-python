@@ -13,10 +13,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # =========================================================================
+import os
 import sys
 import time
 import uuid
 import random
+import copy
+import yaml
+import six
 
 from qingcloud.conn.auth import QuerySignatureAuthHandler
 from qingcloud.conn.connection import HttpConnection, HTTPRequest
@@ -48,6 +52,10 @@ class APIConnection(HttpConnection):
         @param retry_time - the retry_time when message send fail
         """
 
+        # load config yaml
+        config = self.load_config_yaml()
+        iaas_apis = config["qingcloud"]["iaas"]["api"]
+
         # Set default zone
         self.zone = zone
         # Set retry times
@@ -59,6 +67,45 @@ class APIConnection(HttpConnection):
 
         self._auth_handler = QuerySignatureAuthHandler(self.host,
             self.qy_access_key_id, self.qy_secret_access_key)
+        self.load_api_method(iaas_apis)
+
+    def load_config_yaml(self):
+        """ load yaml
+        """
+        CONFIG_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                                   "config.yaml")
+        with open(CONFIG_PATH, 'r') as stream:
+            return yaml.safe_load(stream)
+
+    def load_api_method(self, iaas_apis):
+        """ load api method
+        """
+        for method_name, info in iaas_apis.items():
+            action = info["action"]
+            params = info["params"]
+            required_params = info["required_params"]
+
+            def generate_api_method(action, params, required_params):
+                action = copy.deepcopy(action)
+                params = copy.deepcopy(params)
+                required_params = copy.deepcopy(required_params)
+                def api_method(self, *args, **kwargs):
+                    body = {}
+                    for i, arg in enumerate(args):
+                        if i > len(params):
+                            raise TypeError("takes exactly %s arguments (%s given)" % (len(params), len(args)))
+                        param = params[i]['param']
+                        body[param] = arg
+                    body.update(kwargs)
+                    if not self.req_checker.check_yaml_api_params(body,
+                                                                  required_params=required_params,
+                                                                  params=params):
+                        return None
+                    return self.send_request(action, body)
+                return api_method
+
+            _method = generate_api_method(action, params, required_params)
+            setattr(self, method_name, six.create_bound_method(_method, self))
 
     def send_request(self, action, body, url="/iaas/", verb="GET"):
         """ Send request
